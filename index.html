@@ -1716,22 +1716,55 @@
 						pauseTrack();
 					}
 
-					if ('mediaSession' in navigator) {
-						const artwork = track.albumArtUrl ? [{ src: track.albumArtUrl, sizes: '512x512', type: 'image/jpeg' }] : [];
-						navigator.mediaSession.metadata = new MediaMetadata({
-							title: track.title,
-							artist: track.artist,
-							album: 'Musiqua',
-							artwork: artwork
-						});
-					}
+					// if ('mediaSession' in navigator) {
+					// 	const artwork = track.albumArtUrl ? [{ src: track.albumArtUrl, sizes: '512x512', type: 'image/jpeg' }] : [];
+					// 	navigator.mediaSession.metadata = new MediaMetadata({
+					// 		title: track.title,
+					// 		artist: track.artist,
+					// 		album: 'Musiqua',
+					// 		artwork: artwork
+					// 	});
+					// }
 
 				}, 250);
 
 				updateActiveTrackHighlight();
 			}
 
-			function playTrack() { 
+			// function playTrack() { 
+ 			// 	 if (!audio.src) return; 
+ 			// 	 if (!isAudioContextSetup) { 
+ 			// 		 setupAudioAnalysis(); 
+ 			// 	 } 
+ 			// 	 if (audioContext.state === 'suspended') { 
+ 			// 		 audioContext.resume(); 
+ 			// 	 } 
+
+ 			// 	 if (playlist.length > 0 && currentIndex >= 0) {
+ 			// 		 const track = playlist[currentIndex];
+ 			// 		 document.title = `▶ ${track.title} - ${track.artist}`;
+ 					 
+ 			// 		 if ('mediaSession' in navigator) {
+ 			// 			 navigator.mediaSession.metadata = new MediaMetadata({
+ 			// 				 title: track.title,
+ 			// 				 artist: track.artist,
+ 			// 				 album: 'Musiqua',
+ 			// 				 artwork: track.albumArtUrl ? [{ src: track.albumArtUrl, sizes: '512x512', type: 'image/png' }] : []
+ 			// 			 });
+ 			// 		 }
+ 			// 	 }
+
+ 			// 	 audio.play(); 
+ 			// 	 document.querySelectorAll('#play-icon').forEach(icon => icon.style.display = 'none'); 
+ 			// 	 document.querySelectorAll('#pause-icon').forEach(icon => icon.style.display = 'block'); 
+ 			// 	 trackInfo.classList.add('playing'); 
+ 			// 	 document.querySelector(`.playlist-item[data-index='${currentIndex}']`)?.classList.add('is-playing'); 
+ 			// 	 if ('mediaSession' in navigator) { 
+ 			// 		 navigator.mediaSession.playbackState = 'playing'; 
+ 			// 	 } 
+ 			//  }
+
+            function playTrack() { 
  				 if (!audio.src) return; 
  				 if (!isAudioContextSetup) { 
  					 setupAudioAnalysis(); 
@@ -1740,18 +1773,10 @@
  					 audioContext.resume(); 
  				 } 
 
+ 				 // Update Browser Tab & Taskbar Title
  				 if (playlist.length > 0 && currentIndex >= 0) {
  					 const track = playlist[currentIndex];
  					 document.title = `▶ ${track.title} - ${track.artist}`;
- 					 
- 					 if ('mediaSession' in navigator) {
- 						 navigator.mediaSession.metadata = new MediaMetadata({
- 							 title: track.title,
- 							 artist: track.artist,
- 							 album: 'Musiqua',
- 							 artwork: track.albumArtUrl ? [{ src: track.albumArtUrl, sizes: '512x512', type: 'image/png' }] : []
- 						 });
- 					 }
  				 }
 
  				 audio.play(); 
@@ -1759,9 +1784,6 @@
  				 document.querySelectorAll('#pause-icon').forEach(icon => icon.style.display = 'block'); 
  				 trackInfo.classList.add('playing'); 
  				 document.querySelector(`.playlist-item[data-index='${currentIndex}']`)?.classList.add('is-playing'); 
- 				 if ('mediaSession' in navigator) { 
- 					 navigator.mediaSession.playbackState = 'playing'; 
- 				 } 
  			 }
 
 			function pauseTrack() {
@@ -2190,6 +2212,25 @@
 				}
 			});
 			audio.addEventListener('ended', handleTrackEnd);
+
+            audio.addEventListener('play', () => {
+				if ('mediaSession' in navigator && playlist.length > 0 && currentIndex >= 0) {
+					const track = playlist[currentIndex];
+					navigator.mediaSession.playbackState = 'playing';
+					navigator.mediaSession.metadata = new MediaMetadata({
+						title: track.title,
+						artist: track.artist,
+						album: 'Musiqua',
+						artwork: track.albumArtUrl ? [{ src: track.albumArtUrl, sizes: '512x512', type: 'image/png' }] : []
+					});
+				}
+			});
+
+			audio.addEventListener('pause', () => {
+				if ('mediaSession' in navigator) {
+					navigator.mediaSession.playbackState = 'paused';
+				}
+			});
 
 			progressBar.addEventListener('input', () => {
 				if (!audio.src) return;
