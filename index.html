@@ -497,6 +497,8 @@
 			display: flex;
 			justify-content: space-between;
 			align-items: center;
+			flex-wrap: wrap; /* NEW: Allows buttons to drop down safely if space is tight */
+			gap: 10px;       /* NEW: Prevents text and buttons from touching */
 		}
 
 		#playlist-header h2 {
@@ -505,7 +507,18 @@
 
 		#playlist-header-controls {
 			display: flex;
-			gap: 8px;
+			gap: 6px; /* Slightly reduced gap to save horizontal space */
+		}
+
+		/* NEW: Slightly scale down the header buttons so all 5 fit beautifully */
+		#playlist-header-controls .control-btn {
+			width: 38px;
+			height: 38px;
+		}
+		
+		#playlist-header-controls .control-btn svg {
+			width: 20px;
+			height: 20px;
 		}
 
 		.playlist {
@@ -1365,8 +1378,11 @@
                 <h2>Playlist</h2>
                 <div id="playlist-header-controls">
                     <button class="control-btn" id="lyrics-btn" title="Toggle Lyrics" aria-label="Lyrics">
-                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 2H3c-.55 0-1 .45-1 1v14l4-4h11c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1z"/></svg>
-                    </button>
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor">
+                            <path d="M0 0h24v24H0V0z" fill="none"/>
+                            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM6 12h8v2H6zm0-3h12v2H6zm0-3h12v2H6z"/>
+                        </svg>
+                    </button>   
                     <button class="control-btn" id="change-folder-btn" title="Select another folder">
 
                         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px"
