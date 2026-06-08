@@ -1229,6 +1229,41 @@
 			display: inline-block;
 			animation: marquee 25s linear infinite;
 		}
+
+
+        /* --- Lyrics Overlay --- */
+		.lyrics-container {
+			position: absolute;
+			top: 0; left: 0; right: 0; bottom: 0;
+			background: rgba(18, 18, 18, 0.75);
+			backdrop-filter: blur(12px);
+			border-radius: 16px;
+			padding: 20px;
+			display: flex;
+			flex-direction: column;
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity 0.3s ease;
+			z-index: 10;
+		}
+		.lyrics-container.show {
+			opacity: 1;
+			pointer-events: auto;
+		}
+		.lyrics-content {
+			overflow-y: auto;
+			flex-grow: 1;
+			font-size: 0.95rem;
+			line-height: 1.8;
+			text-align: center;
+			white-space: pre-wrap; /* Preserves line breaks in lyrics */
+			padding-right: 10px;
+			color: #fff;
+			text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+		}
+		.lyrics-content::-webkit-scrollbar { width: 6px; }
+		.lyrics-content::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.3); border-radius: 10px; }
+        
 	</style>
 </head>
 
@@ -1248,11 +1283,14 @@
                     <img id="album-art-img" src="" alt="Album Art">
                     <div id="album-art-placeholder">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path
-                                d="M12 3v10.55c-.59-.34-1.27-.55-2-.55c-2.21 0-4 1.79-4 4s1.79 4 4 4s4-1.79 4-4V7h4V3h-6z" />
+                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55c-2.21 0-4 1.79-4 4s1.79 4 4 4s4-1.79 4-4V7h4V3h-6z" />
                         </svg>
                     </div>
+                    <div id="lyrics-container" class="lyrics-container">
+                        <div id="lyrics-content" class="lyrics-content">No lyrics embedded in this file.</div>
+                    </div>
                 </div>
+
                 <div id="track-info">
                     <h2 id="track-title">No song playing</h2>
                     <p id="track-artist">Select a folder to begin</p>
@@ -1326,7 +1364,11 @@
             <div id="playlist-header">
                 <h2>Playlist</h2>
                 <div id="playlist-header-controls">
+                    <button class="control-btn" id="lyrics-btn" title="Toggle Lyrics" aria-label="Lyrics">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 2H3c-.55 0-1 .45-1 1v14l4-4h11c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1z"/></svg>
+                    </button>
                     <button class="control-btn" id="change-folder-btn" title="Select another folder">
+
                         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px"
                             fill="currentColor">
                             <path d="M0 0h24v24H0V0z" fill="none" />
@@ -1522,9 +1564,10 @@
 
 					window.jsmediatags.read(file, { 
  						 onSuccess: (tag) => { 
- 							 const { artist, title, picture } = tag.tags; 
+ 							 const { artist, title, picture, lyrics } = tag.tags; 
  							 trackInfo.title = title || trackInfo.name; 
  							 trackInfo.artist = artist || "Unknown Artist"; 
+ 							 trackInfo.lyrics = lyrics ? lyrics.lyrics : null; // Extract lyrics if they exist 
  							 if (picture) { 
  								 const byteArray = new Uint8Array(picture.data);
  								 const blob = new Blob([byteArray], { type: picture.format });
@@ -1654,6 +1697,9 @@
 
 					setupScrollableText(trackTitle, track.title);
 					setupScrollableText(trackArtist, track.artist);
+					
+					// Update lyrics text for the new song
+					document.getElementById('lyrics-content').textContent = track.lyrics ? track.lyrics : "No lyrics embedded in this file.";
 
 					if (fullscreenPlayer.classList.contains('open')) {
 						updateFullscreenPlayer();
@@ -2186,6 +2232,15 @@
 			repeatBtn.addEventListener('click', toggleRepeat);
 			editPlaylistBtn.addEventListener('click', toggleEditPlaylist);
 			volumeBtn.addEventListener('click', toggleMute);
+
+            const lyricsBtn = document.getElementById('lyrics-btn');
+			const lyricsContainer = document.getElementById('lyrics-container');
+			
+			lyricsBtn.addEventListener('click', () => {
+				triggerHapticFeedback();
+				lyricsContainer.classList.toggle('show');
+				lyricsBtn.classList.toggle('active');
+			});
 
 			audio.addEventListener('timeupdate', () => {
 				if (!progressBar.classList.contains('slider-active')) {
