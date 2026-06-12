@@ -1700,17 +1700,17 @@
 
             // --- NEW: Dynamic & Scrolling Window Title ---
 			// --- Updated: Dynamic & Scrolling Window Title ---
+			// --- Updated: Clean Scrolling Window Title ---
 			function updateWindowTitle(trackName) {
 				// Clear any previous song's scroll animation
 				if (titleScrollInterval) {
 					clearInterval(titleScrollInterval);
 				}
 
-				// Using your clean new name here
-				const baseTitle = `Musiqua - ${trackName}`;
+				// We completely remove the "Musiqua Player -" prefix here
+				// so ONLY the song title scrolls in your taskbar.
+				let displayTitle = trackName + "   |   "; // Spacer between loops
 				
-				// Removed the length check so it ALWAYS scrolls smoothly
-				let displayTitle = baseTitle + "   |   "; // Spacer between loops
 				titleScrollInterval = setInterval(() => {
 					// Move the first character to the end
 					displayTitle = displayTitle.substring(1) + displayTitle.substring(0, 1);
