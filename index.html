@@ -1525,6 +1525,7 @@
 			let fsSwipeEndY = 0;
 			let isDraggingControls = false;
 			let isSilentTrackStarted = false;
+            let titleScrollInterval = null; // NEW: Holds the interval for the scrolling window title
 
 			// --- Web Audio API for Visualization --- 
 			let audioContext;
@@ -1697,6 +1698,30 @@
 				}
 			}
 
+            // --- NEW: Dynamic & Scrolling Window Title ---
+			function updateWindowTitle(trackName) {
+				// Clear any previous song's scroll animation
+				if (titleScrollInterval) {
+					clearInterval(titleScrollInterval);
+				}
+
+				const baseTitle = `Musiqua - ${trackName}`;
+				
+				// If the title is relatively short, keep it static
+				if (baseTitle.length <= 25) {
+					document.title = baseTitle;
+					return;
+				}
+
+				// If it's long, set up a scrolling marquee effect
+				let displayTitle = baseTitle + "   |   "; // Spacer between loops
+				titleScrollInterval = setInterval(() => {
+					// Move the first character to the end
+					displayTitle = displayTitle.substring(1) + displayTitle.substring(0, 1);
+					document.title = displayTitle;
+				}, 350); // Speed of the text rotation (milliseconds)
+			}
+
 			function renderPlaylist() {
 				playlistView.innerHTML = '';
 
@@ -1801,6 +1826,9 @@
 					
 					// Update lyrics text for the new song
 					document.getElementById('lyrics-content').textContent = track.lyrics ? track.lyrics : "No lyrics embedded in this file.";
+
+					// --- NEW: Trigger the scrolling window title ---
+					updateWindowTitle(track.title);
 
 					if (fullscreenPlayer.classList.contains('open')) {
 						updateFullscreenPlayer();
@@ -2185,6 +2213,12 @@
 			}
 
 			function promptToSelectFolder() {
+				// --- NEW: Reset window title to default ---
+				if (titleScrollInterval) {
+					clearInterval(titleScrollInterval);
+				}
+				document.title = "Musiqua - Liquid Glass Music Player";
+
 				if (window.matchMedia("(max-width: 800px)").matches) {
 					folderSelectorView.scrollIntoView({ behavior: 'smooth', block: 'center' });
 				}
