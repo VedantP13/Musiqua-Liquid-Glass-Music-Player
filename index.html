@@ -1533,18 +1533,46 @@
 			let dataArray;
 			let isAudioContextSetup = false;
 
+            // --- NEW: IndexedDB for Persistent Folder ---
+			const DB_NAME = 'MusiquaDB';
+			const STORE_NAME = 'settings';
+			function openDB() {
+				return new Promise((resolve, reject) => {
+					const request = indexedDB.open(DB_NAME, 1);
+					request.onupgradeneeded = (e) => e.target.result.createObjectStore(STORE_NAME);
+					request.onsuccess = (e) => resolve(e.target.result);
+					request.onerror = () => reject('DB Error');
+				});
+			}
+			async function saveFolderHandle(handle) {
+				const db = await openDB();
+				const tx = db.transaction(STORE_NAME, 'readwrite');
+				tx.objectStore(STORE_NAME).put(handle, 'folderHandle');
+				return new Promise(resolve => tx.oncomplete = resolve);
+			}
+			async function getFolderHandle() {
+				const db = await openDB();
+				return new Promise((resolve) => {
+					const tx = db.transaction(STORE_NAME, 'readonly');
+					const request = tx.objectStore(STORE_NAME).get('folderHandle');
+					request.onsuccess = () => resolve(request.result);
+					request.onerror = () => resolve(null);
+				});
+			}
+			async function verifyPermission(fileHandle) {
+				const options = { mode: 'read' };
+				if ((await fileHandle.queryPermission(options)) === 'granted') return true;
+				if ((await fileHandle.requestPermission(options)) === 'granted') return true;
+				return false;
+			}
+
 			// --- File & Playlist Handling --- 
-			selectFolderBtn.addEventListener('click', () => folderInput.click());
-			changeFolderBtn.addEventListener('click', () => {
-				if (playlist.length === 0) {
-					promptToSelectFolder();
+			async function processAudioFiles(audioFiles) {
+				if (audioFiles.length === 0) {
+					alert('No supported audio files found in the selected folder.');
 					return;
 				}
-				folderInput.click()
-			});
-			folderInput.addEventListener('change', handleFolderSelection);
 
-			async function handleFolderSelection(event) {
 				// --- MEMORY CLEANUP ---
 				if (playlist.length > 0) {
 					playlist.forEach(track => {
@@ -1553,15 +1581,6 @@
 							URL.revokeObjectURL(track.albumArtUrl);
 						}
 					});
-				}
-				// ----------------------
-
-				const files = Array.from(event.target.files);
-				const audioFiles = files.filter(file => /\.(mp3|wav|ogg|flac|m4a)$/i.test(file.name));
-
-				if (audioFiles.length === 0) {
-					alert('No supported audio files found in the selected folder.');
-					return;
 				}
 
 				playlistView.innerHTML = `<li class="playlist-item" style="justify-content: center;">Loading music...</li>`;
@@ -1575,26 +1594,24 @@
 						fileObject: file,
 						title: file.name.replace(/\.[^/.]+$/, ""),
 						artist: "Unknown Artist",
-						albumArtUrl: null
+						albumArtUrl: null,
+						lyrics: null
 					};
 
 					window.jsmediatags.read(file, { 
- 						 onSuccess: (tag) => { 
- 							 const { artist, title, picture, lyrics } = tag.tags; 
- 							 trackInfo.title = title || trackInfo.name; 
- 							 trackInfo.artist = artist || "Unknown Artist"; 
- 							 trackInfo.lyrics = lyrics ? lyrics.lyrics : null; // Extract lyrics if they exist 
- 							 if (picture) { 
- 								 const byteArray = new Uint8Array(picture.data);
- 								 const blob = new Blob([byteArray], { type: picture.format });
- 								 trackInfo.albumArtUrl = URL.createObjectURL(blob);
- 							 } 
- 							 resolve(trackInfo); 
- 						 }, 
- 						 onError: (error) => {
-							console.log(`Could not read metadata for ${file.name}:`, error.type, error.info);
-							resolve(trackInfo);
-						}
+						onSuccess: (tag) => { 
+							const { artist, title, picture, lyrics } = tag.tags; 
+							trackInfo.title = title || trackInfo.name; 
+							trackInfo.artist = artist || "Unknown Artist"; 
+							trackInfo.lyrics = lyrics ? lyrics.lyrics : null; 
+							if (picture) { 
+								const byteArray = new Uint8Array(picture.data);
+								const blob = new Blob([byteArray], { type: picture.format });
+								trackInfo.albumArtUrl = URL.createObjectURL(blob);
+							} 
+							resolve(trackInfo); 
+						}, 
+						onError: (error) => resolve(trackInfo)
 					});
 				});
 
@@ -1602,6 +1619,74 @@
 				renderPlaylist();
 				loadTrack(0);
 			}
+
+			async function loadFromDirectoryHandle(directoryHandle) {
+				// Verify permission before attempting to read files
+				const hasPermission = await verifyPermission(directoryHandle);
+				if (!hasPermission) return;
+
+				const files = [];
+				for await (const entry of directoryHandle.values()) {
+					if (entry.kind === 'file') {
+						const file = await entry.getFile();
+						if (/\.(mp3|wav|ogg|flac|m4a)$/i.test(file.name)) {
+							files.push(file);
+						}
+					}
+				}
+				await processAudioFiles(files);
+			}
+
+			// Main UI Button (Handles both new folder and saved folder)
+			selectFolderBtn.addEventListener('click', async () => {
+				try {
+					if (window.showDirectoryPicker) {
+						const savedHandle = await getFolderHandle();
+						if (savedHandle && selectFolderBtn.textContent === 'Open Saved Folder') {
+							await loadFromDirectoryHandle(savedHandle);
+						} else {
+							const directoryHandle = await window.showDirectoryPicker();
+							await saveFolderHandle(directoryHandle);
+							await loadFromDirectoryHandle(directoryHandle);
+						}
+					} else {
+						folderInput.click(); // Fallback for Mobile/Safari
+					}
+				} catch (err) {
+					console.log('Folder selection cancelled:', err);
+				}
+			});
+
+			// Top Bar Change Folder Button
+			changeFolderBtn.addEventListener('click', async () => {
+				if (playlist.length === 0) {
+					promptToSelectFolder();
+					return;
+				}
+				try {
+					if (window.showDirectoryPicker) {
+						const directoryHandle = await window.showDirectoryPicker();
+						await saveFolderHandle(directoryHandle);
+						await loadFromDirectoryHandle(directoryHandle);
+						
+						// Update home screen text for the future
+						selectFolderBtn.textContent = 'Open Saved Folder';
+						document.querySelector('#folder-selector h3').textContent = 'Welcome back!';
+						document.querySelector('#folder-selector p').textContent = 'Click below to reload your saved music library.';
+					} else {
+						folderInput.click();
+					}
+				} catch (err) {
+					console.log('Folder change cancelled:', err);
+				}
+			});
+
+			// Fallback input handler for Mobile/Safari
+			folderInput.addEventListener('change', async (event) => {
+				const files = Array.from(event.target.files);
+				const audioFiles = files.filter(file => /\.(mp3|wav|ogg|flac|m4a)$/i.test(file.name));
+				await processAudioFiles(audioFiles);
+			});
 
 			function setupScrollableText(element, text) {
 				element.classList.remove('scrolling');
@@ -1874,8 +1959,13 @@
 				if (audio.src) {
 					audio.paused ? playTrack() : pauseTrack();
 				} else if (playlist.length > 0) {
-					currentIndex = 0;
-					loadTrack(0, true);
+					// Check if shuffle is active before picking the first song
+					if (isShuffled) {
+						currentIndex = Math.floor(Math.random() * playlist.length);
+					} else {
+						currentIndex = 0;
+					}
+					loadTrack(currentIndex, true);
 				}
 			}
 
@@ -2587,7 +2677,7 @@
 				}
 			});
 
-			function init() {
+			async function init() {
 				audio.volume = volumeSlider.value / 100;
 				preMuteVolume = audio.volume;
 				updateSliderFill(volumeSlider);
@@ -2595,6 +2685,16 @@
 				setupScrollableText(trackTitle, "No song playing");
 				setupScrollableText(trackArtist, "Select a folder to begin");
 				setupMediaSessionHandlers();
+
+				// --- NEW: Check for saved folder on load ---
+				if (window.showDirectoryPicker) {
+					const savedHandle = await getFolderHandle();
+					if (savedHandle) {
+						document.querySelector('#folder-selector h3').textContent = 'Welcome back!';
+						document.querySelector('#folder-selector p').textContent = 'Click below to reload your saved music library.';
+						selectFolderBtn.textContent = 'Open Saved Folder';
+					}
+				}
 			}
 
 			init();
