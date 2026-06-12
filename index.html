@@ -1699,21 +1699,17 @@
 			}
 
             // --- NEW: Dynamic & Scrolling Window Title ---
+			// --- Updated: Dynamic & Scrolling Window Title ---
 			function updateWindowTitle(trackName) {
 				// Clear any previous song's scroll animation
 				if (titleScrollInterval) {
 					clearInterval(titleScrollInterval);
 				}
 
+				// Using your clean new name here
 				const baseTitle = `Musiqua - ${trackName}`;
 				
-				// If the title is relatively short, keep it static
-				if (baseTitle.length <= 25) {
-					document.title = baseTitle;
-					return;
-				}
-
-				// If it's long, set up a scrolling marquee effect
+				// Removed the length check so it ALWAYS scrolls smoothly
 				let displayTitle = baseTitle + "   |   "; // Spacer between loops
 				titleScrollInterval = setInterval(() => {
 					// Move the first character to the end
